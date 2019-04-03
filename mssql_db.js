@@ -97,7 +97,6 @@ exports.database.prototype.findKeys = function(key, notKey, callback) {
 
   //desired keys are key, e.g. pad:%
   key = key.replace(/\*/g, "%");
-
   request.input("key", mssql.NVarChar(100), key);
 
   if (notKey != null && notKey != undefined) {
@@ -128,11 +127,7 @@ exports.database.prototype.set = function(key, value, callback) {
   if (key.length > 100) {
     callback("Your Key can only be 100 chars");
   } else {
-    var query =
-      "MERGE [store] t USING (SELECT @key [key], @value [value]) s" +
-      " ON t.[key] = s.[key]" +
-      " WHEN MATCHED AND s.[value] IS NOT NULL THEN UPDATE SET t.[value] = s.[value]" +
-      " WHEN NOT MATCHED THEN INSERT ([key], [value]) VALUES (s.[key], s.[value]);";
+    var query = "DELETE FROM [store] WHERE [key] = @key; INSERT INTO [store] VALUES (@key, @value);"
 
     request.input("key", mssql.NVarChar(100), key);
     request.input("value", mssql.NText, value);
@@ -145,11 +140,9 @@ exports.database.prototype.set = function(key, value, callback) {
 };
 
 exports.database.prototype.remove = function(key, callback) {
-
   var request = new mssql.Request(this.db);
   request.input("key", mssql.NVarChar(100), key);
   request.query("DELETE FROM [store] WHERE [key] = @key", callback);
-
 };
 
 exports.database.prototype.doBulk = function(bulk, callback) {
@@ -172,10 +165,8 @@ exports.database.prototype.doBulk = function(bulk, callback) {
         replacements.push("\nCOMMIT TRANSACTION;\nBEGIN TRANSACTION;\n");
       }
 
-      replacements.push(`MERGE [store] t USING (SELECT '${bulk[i].key}' [key], '${bulk[i].value}' [value]) s
-                   ON t.[key] = s.[key]
-                   WHEN MATCHED AND s.[value] IS NOT NULL THEN UPDATE SET t.[value] = s.[value]
-                   WHEN NOT MATCHED THEN INSERT ([key], [value]) VALUES (s.[key], s.[value]);`);
+      replacements.push(`DELETE FROM [store] WHERE [key] = '${bulk[i].key}'; 
+                         INSERT INTO [store] VALUES ('${bulk[i].key}', '${bulk[i].value}');`);
 
     } else if (bulk[i].type === "remove") {
 
