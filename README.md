@@ -13,6 +13,7 @@ Abstract your databases, make datababies.  ueberDB turns every database into a s
 * Couch
 * Cassandra
 * Crate
+* MSSQL
 
 #Install
 
